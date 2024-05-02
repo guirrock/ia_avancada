@@ -1,32 +1,29 @@
 #ifndef BFS_H
 #define BFS_H
 
-#include <queue>
-#include <map>
+#include "bfsnode.h"
+#include "node.h"
 #include <vector>
+#include <queue>
+#include <unordered_set>
+#include <string>
+#include <algorithm>
 
-using namespace std;
-
-// Classe para resolver o quebra-cabeça usando BFS
 class BFS {
-private:
-    queue<Node*> nodeQueue; // Fila para nós ainda não explorados
-    map<vector<int>, bool> visited; // Mapa para estados já visitados
-    vector<int> finalVector; // Estado final do quebra-cabeça
-
 public:
-    int depth; // Profundidade da solução
-    int nodesCount; // Contagem de nós explorados
+    BFS(const std::vector<int>& finalVector);
 
-    // Construtor da classe BFS
-    BFS(vector<int> _initialVector, vector<int> _finalVector);
+    std::vector<Node*> solve(const std::vector<int>& initialVector);
 
-    // Método para resolver o quebra-cabeça usando BFS
-    void solve();
+    int getNodesCount() const;
+    int getSolutionDepth() const;
 
-    // Rastreia a solução até o nó inicial, retorna a profundidade
-    int traceSolution(vector<Node*>& solution, Node* endNode);
-
+private:
+    std::vector<int> finalVector;
+    int nodesCount;
+    int solutionDepth;
+	//std::vector<Node*> solve(const std::vector<int>& initialVector);
+    std::vector<Node*> traceSolution(Node* node);
 };
 
 #endif // BFS_H

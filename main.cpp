@@ -1,178 +1,150 @@
+#include "astar.h"
+#include "gbfs.h"
+#include "bfs.h"
+//#include "idfs.h"
+//#include "idastar.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <vector>
 #include <chrono>
-#include <string>
-#include "node.h"
-#include "bfs.h"
-//#include "gbfs.h"
-//#include "astar.h"
-//#include "idfs.h"
-//#include "idastar.h"
 
-using namespace std;
+int main() {
+    std::ifstream inputFile("input/8puzzle_instances.txt");
 
-// Função para calcular a distância de Manhattan entre estados
-int manhattanDistance(const vector<int>& state, const vector<int>& goal) {
-    int distance = 0;
-    for (size_t i = 0; i < state.size(); ++i) {
-        if (state[i] != 0) {
-            int goalPos = std::find(goal.begin(), goal.end(), state[i]) - goal.begin();
-            int rowDistance = abs(static_cast<int>(i / 3) - static_cast<int>(goalPos / 3));
-            int colDistance = abs(static_cast<int>(i % 3 - goalPos % 3));
-            distance += rowDistance + colDistance;
-        }
-    }
-    return distance;
-}
-
-// Função principal para processar argumentos e executar algoritmo selecionado
-int main(int argc, char** argv) {
-    if (argc < 2) {
-        cerr << "Erro: parâmetros insuficientes. Uso: <algoritmo> [estados_iniciais]" << endl;
+    if (!inputFile.is_open()) { 
+        std::cerr << "Erro ao abrir o arquivo de entrada." << std::endl;
         return 1;
     }
 
-    string algorithm = argv[1]; // Algoritmo a ser usado
-    vector<vector<int>> initialStates; // Estados iniciais do quebra-cabeça
+    std::string line;
+    std::vector<std::vector<int>> initialStates;
 
-    // Verificar se há estados iniciais passados como argumento
-    if (argc > 2) {
-        istringstream iss(argv[2]);
+    while (std::getline(inputFile, line)) {
+        std::istringstream iss(line);
         std::vector<int> initialState;
         int num;
 
         while (iss >> num) {
-            initialStates.push_back(initialState);
+            initialState.push_back(num);
         }
 
-        initialStates.push_back(initialState); // Adicionar o estado lido
-    } else {
-        // Ler do arquivo de entrada
-        string filePath;
-        if (algorithm == "-astar15") {
-            filePath = "input/15puzzle_instances.txt"; // Arquivo para o 15-puzzle
-        } else {
-            filePath = "input/8puzzle_instances.txt"; // Arquivo para o 8-puzzle
-        }
-
-        ifstream inputFile(filePath);
-        if (!inputFile.is_open()) {
-            cerr << "Erro ao abrir o arquivo de entrada: " << filePath << endl;
-            return 1;
-        }
-
-        string line;
-        while (getline(inputFile, line)) {
-            istringstream iss(line);
-            vector<int> initialState;
-            int num;
-
-            while (iss >> num) {
-                initialState.push_back(num);
-            }
-
-            initialStates.push_back(initialState); // Adicionar cada estado lido
-        }
-
-        inputFile.close();
+        initialStates.push_back(initialState);
     }
 
-    // Selecionar e executar o algoritmo apropriado
-    vector<int> finalVector_8 = {0, 1, 2, 3, 4, 5, 6, 7, 8};
-    vector<int> finalVector_15 = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+    inputFile.close();
 
-    if (algorithm == "-bfs") {
-        for (const auto& initialState : initialStates) {
-            auto start_time = chrono::high_resolution_clock::now();
-            
-            BFS bfs(initialState, finalVector_8);
+    std::vector<int> finalState = {0, 1, 2, 3, 4, 5, 6, 7, 8};
 
-            auto end_time = chrono::high_resolution_clock::now();
-            auto duration = chrono::duration<double>(end_time - start_time).count();
+    for (const auto& initialState : initialStates) {
+        // A* Algorithm
+        {
+            Astar astar(finalState);
+            auto start_time = std::chrono::high_resolution_clock::now();
 
-            cout << "BFS: " << bfs.nodesCount 
-                << ", Profundidade: " << bfs.depth - 1 
-                << ", Tempo de Execução: " << duration 
-                << ", Heurística Inicial: " << manhattanDistance(initialState, finalVector_8) 
-                << endl;
+            auto solutionPath = astar.findSolution(initialState);
+
+            auto end_time = std::chrono::high_resolution_clock::now();
+            auto duration_sec = std::chrono::duration<double>(end_time - start_time).count();
+
+            if (!solutionPath.empty()) {
+                std::cout << "A*: "
+                          << astar.getNodesCount() << ", "
+                          << solutionPath.size() - 1 << ", "
+                          << duration_sec << ", "
+                          << astar.getHeuristicAverage() << ", "
+                          << astar.getStartHeuristic() << std::endl;
+            } else {
+                std::cout << "A*: Nenhuma solução encontrada." << std::endl;
+            }
         }
-    }/* else if (algorithm == "-gbfs") {
-        for (const auto& initialState : initialStates) {
-            auto start_time = chrono::high_resolution_clock::now();
-            
-            GBFS gbfs(initialState, finalVector_8);
 
-            auto end_time = chrono::high_resolution_clock::now();
-            auto duration = chrono::duration<double>(end_time - start_time).count();
+        // GBFS Algorithm
+        {
+            GBFS gbfs(finalState);
+            auto start_time = std::chrono::high_resolution_clock::now();
 
-            cout << "GBFS: " << gbfs.nodesCount 
-                << ", Tempo de Execução: " << duration 
-                << ", Heurística Média: " << gbfs.heuristicSum / gbfs.nodesCount 
-                << ", Heurística Inicial: " << manhattanDistance(initialState, finalVector_8) 
-                << endl;
+            auto solutionPath = gbfs.solve(initialState);
+
+            auto end_time = std::chrono::high_resolution_clock::now();
+            auto duration_sec = std::chrono::duration<double>(end_time - start_time).count();
+
+            if (!solutionPath.empty()) {
+                std::cout << "GBFS: "
+                          << gbfs.getNodesCount() << ", "
+                          << solutionPath.size() - 1 << ", "
+                          << duration_sec << ", "
+                          << gbfs.getHeuristicAverage() << ", "
+                          << gbfs.getStartHeuristic() << std::endl;
+            } else {
+                std::cout << "GBFS: Nenhuma solução encontrada." << std::endl;
+            }
         }
-    } else if (algorithm == "-astar") {
-        for (const auto& initialState : initialStates) {
-            auto start_time = chrono::high_resolution_clock::now();
-            
-            Astar astar(initialState, finalVector_8);
 
-            auto end_time = chrono::high_resolution_clock::now();
-            auto duration = chrono::duration<double>(end_time - start_time).count();
+        // BFS Algorithm
+        {
+            BFS bfs(finalState);
+            auto start_time = std::chrono::high_resolution_clock::now();
 
-            cout << "A*: " << astar.nodesCount 
-                << ", Tempo de Execução: " << duration 
-                << ", Heurística Média: " << astar.heuristicSum / astar.nodesCount 
-                << ", Heurística Inicial: " << manhattanDistance(initialState, finalVector_8) 
-                << endl;
+            auto solutionPath = bfs.solve(initialState);
+
+            auto end_time = std::chrono::high_resolution_clock::now();
+            auto duration_sec = std::chrono::duration<double>(end_time - start_time).count();
+
+            if (!solutionPath.empty()) {
+                std::cout << "BFS: "
+                          << bfs.getNodesCount() << ", "
+                          << solutionPath.size() - 1 << ", "
+                          << duration_sec << ", 0, "
+                          << bfs.getSolutionDepth() << std::endl;
+            } else {
+                std::cout << "BFS: Nenhuma solução encontrada." << std::endl;
+            }
         }
-    } else if (algorithm == "-idfs") {
-        for (const auto& initialState : initialStates) {
-            auto start_time = chrono::high_resolution_clock::now();
-            
-            IDFS idfs(initialState, finalVector_8);
+        /*
+        // IDA* Algorithm
+        {
+            IDAStar idastar(finalState);
+            auto start_time = std::chrono::high_resolution_clock::now();
 
-            auto end_time = chrono::high_resolution_clock::now();
-            auto duration = chrono::duration<double>(end_time - start_time).count();
+            auto solutionPath = idastar.idaStar(initialState);
 
-            cout << "IDFS: " << idfs.nodesCount 
-                << ", Profundidade: " << idfs.depth 
-                << ", Tempo de Execução: " << duration 
-                << ", Heurística Inicial: " << manhattanDistance(initialState, finalVector_8) 
-                << endl;
+            auto end_time = std::chrono::high_resolution_clock::now();
+            auto duration_sec = std::chrono::duration<double>(end_time - start_time).count();
+
+            if (!solutionPath.empty()) {
+                std::cout << "IDA*: "
+                          << idastar.getNodesExpanded() << ", "
+                          << solutionPath.size() - 1 << ", "
+                          << duration_sec << ", "
+                          << idastar.getHeuristicAverage() << ", "
+                          << idastar.getStartHeuristic() << std::endl;
+            } else {
+                std::cout << "IDA*: Nenhuma solução encontrada." << std::endl;
+            }
         }
-    } else if (algorithm == "-idastar") {
-        for (const auto& initialState : initialStates) {
-            auto start_time = chrono::high_resolution_clock::now();
-            
-            IDAStar idastar(initialState, finalVector_8);
 
-            auto end_time = chrono::high_resolution_clock::now();
-            auto duration = chrono::duration<double>(end_time - start_time).count();
+        // IDFS Algorithm
+        {
+            IDFS idfs(finalState);
+            auto start_time = std::chrono::high_resolution_clock::now();
 
-            cout << "IDA*: " << idastar.nodesCount 
-                << ", Tempo de Execução: " << duration 
-                << ", Heurística Inicial: " << manhattanDistance(initialState, finalVector_8) 
-                << endl;
-        }
-    } else if (algorithm == "-astar15") {
-        for (const auto& initialState : initialStates) {
-            auto start_time = chrono::high_resolution_clock::now();
-            
-            Astar astar(initialState, finalVector_15);
+            auto solutionPath = idfs.solve(initialState);
 
-            auto end_time = chrono::high_resolution_clock::now();
-            auto duration = chrono::duration<double>(end_time - start_time).count();
+            auto end_time = std::chrono::high_resolution_clock::now();
+            auto duration_sec = std::chrono::duration<double>(end_time - start_time).count();
 
-            cout << "A* (15-puzzle): " << astar.nodesCount 
-                << ", Tempo de Execução: " << duration 
-                << ", Heurística Inicial: " << manhattanDistance(initialState, finalVector_15) 
-                << endl;
-        }
-    }*/ else {
-        cerr << "Algoritmo desconhecido: " << algorithm << endl;
+            if (!solutionPath.empty()) {
+                std::cout << "IDFS: "
+                          << idfs.getNodesCount() << ", "
+                          << solutionPath.size() - 1 << ", "
+                          << duration_sec << ", "
+                          << "0, " // Heurística
+                          << idfs.getSolutionDepth() << std::endl;
+            } else {
+                std::cout << "IDFS: Nenhuma solução encontrada." << std::endl;
+            }
+        }*/
     }
 
     return 0;

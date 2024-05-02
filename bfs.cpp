@@ -1,57 +1,54 @@
 #include "bfs.h"
-#include "node.h"
+#include <algorithm>
 
-// Construtor da classe BFS
-BFS::BFS(vector<int> _initialVector, vector<int> _finalVector) {
-    Node* initialNode = new Node(_initialVector, nullptr);
-    nodeQueue.push(initialNode);
+BFS::BFS(const std::vector<int>& finalVector)
+    : finalVector(finalVector), nodesCount(0), solutionDepth(0) {}
 
-    finalVector = _finalVector;
-    nodesCount = 0;
-
-    visited[initialNode->initialVector] = true;
+int BFS::getNodesCount() const {
+    return nodesCount;
 }
 
-// Método para resolver o quebra-cabeça usando BFS
-void BFS::solve() {
-    vector<Node*> solution;
+int BFS::getSolutionDepth() const {
+    return solutionDepth;
+}
 
-    while (!nodeQueue.empty()) {
-        Node* currentNode = nodeQueue.front();
-        nodeQueue.pop();
+std::vector<Node*> BFS::traceSolution(Node* node) {
+    std::vector<Node*> path;
+    while (node) {
+        path.push_back(node);
+        node = node->parent;
+    }
+    std::reverse(path.begin(), path.end());
+    return path;
+}
 
-        // Realiza os movimentos possíveis
-        currentNode->moveUp();
-        currentNode->moveLeft();
-        currentNode->moveRight();
-        currentNode->moveDown();
+std::vector<Node*> BFS::solve(const std::vector<int>& initialVector) {
+    Node* initialNode = new Node(initialVector, nullptr, 1);
+    BFSNode bfsNode(initialNode);
+
+    std::vector<Node*> solutionPath;
+
+    while (Node* currentNode = bfsNode.getNextNode()) {
+        currentNode->moveUp(1);
+        currentNode->moveLeft(1);
+        currentNode->moveRight(1);
+        currentNode->moveDown(1);
 
         nodesCount++;
 
-        for (auto currentChild : currentNode->children) {
-            if (currentChild->initialVector == finalVector) {
-                depth = traceSolution(solution, currentChild);
-                return;
+        for (Node* child : currentNode->children) {
+            if (child->initialVector == finalVector) {
+                solutionPath = traceSolution(child);
+                solutionDepth = static_cast<int>(solutionPath.size());
+                return solutionPath;
             }
 
-            if (visited.count(currentChild->initialVector) == 0) {
-                visited[currentChild->initialVector] = true;
-                nodeQueue.push(currentChild);
+            if (!bfsNode.isVisited(child->initialVector)) {
+                bfsNode.addNode(child);
+                bfsNode.setVisited(child->initialVector);
             }
         }
     }
-}
 
-// Método para rastrear a solução até o nó inicial
-int BFS::traceSolution(vector<Node*>& solution, Node* endNode) {
-    Node* current = endNode;
-    int depth = 0;
-
-    while (current != nullptr) {
-        solution.push_back(current);
-        current = current->parent;
-        depth++;
-    }
-
-    return depth;
+    return {}; // Se nenhum caminho foi encontrado
 }
